@@ -11,6 +11,7 @@ import androidx.compose.material.Text
 import androidx.compose.material.TextField
 import androidx.compose.material.TextFieldDefaults
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,6 +28,7 @@ import com.google.gson.Gson
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import logic.ExtensionManager
 import logic.downloader.Download
 import logic.downloader.fetchJarPathFromJitpack
 import logic.helper.Preferences
@@ -38,12 +40,24 @@ import tanoshi.lib.util.toFile
 @Composable
 fun ExtensionRepoList( sharedData : AppData ) {
 
-    val extensionList = remember { mutableStateListOf<String>().run {
+    val extensionList = remember {
+        mutableStateListOf<String>().run{
         "$configDir/repoList.json".toFile().let {
-                if ( it.isFile ) Gson().fromJson( it.readText() , MutableList::class.java ).forEach { repo ->
-                    if ( !contains( repo as String ) ) add(repo)
+                if ( it.isFile ) {
+                    Gson().fromJson(it.readText(), MutableList::class.java).forEach { repo ->
+                        if (!contains(repo as String)) add(repo)
+                    }
+                } else {
+                    JvmName::class.java
+                        .getResource("/defaultRepoList.json")
+                        ?.readText().run {
+                            Gson().fromJson(this, List::class.java).forEach { repo ->
+                                if (!contains(repo as String)) add(repo)
+                            }
+                        }
                 }
-            }
+        }
+
             this
         }
     }
@@ -98,6 +112,29 @@ fun ExtensionRepoList( sharedData : AppData ) {
                         )
                     )
                 }
+            }
+        }
+        Box( Modifier.fillMaxSize().padding( 30.dp ) , contentAlignment = Alignment.BottomEnd ){
+            var helpText by remember { mutableStateOf( "" ) }
+            Row {
+                Image(
+                    Icons.Filled.Clear, "",
+                    modifier = Modifier.onClick {
+                        sharedData.scope.launch {
+                            helpText = "Cleaning extention dir"
+                            delay(200)
+                            Preferences.getExtensionFolder.toFile().deleteRecursively()
+                            sharedData.extensionManager = ExtensionManager().loadJarFromPath(Preferences.getExtensionFolder)
+                            sharedData.anime = sharedData.extensionManager.animeSource
+                            sharedData.manga = sharedData.extensionManager.mangaSource
+                            sharedData.novel = sharedData.extensionManager.novelSource
+                            helpText = "All extension has be deleted"
+                            delay(1000)
+                            helpText = ""
+                        }
+                    }
+                )
+                Text( " $helpText" , color = Color.Black )
             }
         }
         Box( Modifier.fillMaxSize().padding( 30.dp ) , contentAlignment = Alignment.BottomStart ){
