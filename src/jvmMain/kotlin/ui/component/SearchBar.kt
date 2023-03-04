@@ -13,10 +13,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -24,13 +28,14 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.*
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
 private fun ExtendedSearchBar(
     text : MutableState<String>,
     style: SearchBarStyle = SearchBarStyle(),
     width: MutableState<Int>,
-    extendRequest : MutableState<Boolean>
+    extendRequest : MutableState<Boolean> ,
+    searchAction: () -> Unit
 ) {
     Box( Modifier
         .padding( 10.dp )
@@ -58,7 +63,15 @@ private fun ExtendedSearchBar(
                     text.value = it
                 } ,
                 Modifier
-                    .fillMaxSize() ,
+                    .fillMaxSize()
+                    .onKeyEvent {
+                        if (it.key == Key.Enter && text.value.trim().isNotBlank()) {
+                            searchAction()
+                            return@onKeyEvent true
+                        }
+                        false
+                    }
+                ,
                 singleLine = true ,
                 colors = TextFieldDefaults.textFieldColors(
                     backgroundColor = style.backgroundColor ,
@@ -117,6 +130,7 @@ private fun ContractedSearchBar(
 fun SearchBar(
     text : MutableState<String> ,
     style: SearchBarStyle = SearchBarStyle() ,
+    searchAction : () -> Unit = {} ,
     extendedStatus: MutableState<Boolean>? = null
 ) {
     val isExtended = extendedStatus ?:remember { mutableStateOf( false ) }
@@ -131,7 +145,7 @@ fun SearchBar(
     ){
       if ( isExtended.value ) {
           val width = remember { mutableStateOf( size.value.width ) }
-          ExtendedSearchBar( text , style , width , extendRequest )
+          ExtendedSearchBar( text , style , width , extendRequest ,searchAction )
           if ( !extendRequest.value ) {
               CoroutineScope( Dispatchers.Unconfined ).launch {
                   for ( i in size.value.width downTo 55 step 2 ) {

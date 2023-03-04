@@ -23,7 +23,7 @@ fun SearchBarWithButton(
     val isExtended = remember { mutableStateOf( false ) }
     Row ( Modifier.height( 80.dp ) ){
         Box( Modifier.weight( 10f ) ){
-            SearchBar( query , extendedStatus = isExtended )
+            SearchBar( query , extendedStatus = isExtended , searchAction = onSearchIconClick )
         }
         if ( isExtended.value ) IconButton( Icons.Filled.Search , Color.Red , Color.Black ) {
             onSearchIconClick()
