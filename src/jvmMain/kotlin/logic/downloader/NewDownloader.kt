@@ -28,7 +28,7 @@ class Download( url: String , filePath : String ) {
             fileSize = conn.getHeaderField( "content-length" ).toLong()
         } catch ( _ : Exception ) {
         } finally {
-            conn?.let { it.disconnect() }
+            conn?.disconnect()
         }
     }
 
@@ -49,7 +49,6 @@ class Download( url: String , filePath : String ) {
 
                             fos.write(data, 0, count)
                             progress += count
-                            print("\r$progress/$fileSize")
 
                         }
 
@@ -61,7 +60,6 @@ class Download( url: String , filePath : String ) {
 
             Paths.get("$fileName.unfinishedDownload").toFile().renameTo(Paths.get(fileName).toFile())
 
-            print("\rDownload Complete\n")
         } catch (
             e: Exception
         ) {
