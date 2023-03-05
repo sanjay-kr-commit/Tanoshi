@@ -160,7 +160,7 @@ fun VideoPlayer( sharedData : AppData ) = sharedData.run {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun M3U8VideoPlayer( mrl : MutableState<String> , sharedData: AppData , isControlHidden : MutableState<Boolean> ) {
+private fun M3U8VideoPlayer( mrl : MutableState<String> , sharedData: AppData , isControlHidden : MutableState<Boolean> ) {
 
     var m3u8Job : Job? by remember { mutableStateOf( null ) }
     var bufferJob : Job? by remember { mutableStateOf( null ) }
