@@ -8,7 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import logic.ExtensionManager
 import navigation.NavController
 import navigation.NavigationScreens
-import uk.co.caprica.vlcj.player.base.MediaPlayer
+import uk.co.caprica.vlcj.player.component.EmbeddedMediaListPlayerComponent
 import logic.helper.Preferences
 
 class AppData {
@@ -35,8 +35,7 @@ class AppData {
 
     val scope = CoroutineScope( Dispatchers.Default )
 
-    lateinit var mediaPlayer : MediaPlayer
-    var mediaPlayerMrl = ""
+    lateinit var embeddedMediaListPlayerComponent : EmbeddedMediaListPlayerComponent
     var title = ""
 
     var appState : WindowState = WindowState()

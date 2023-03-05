@@ -1,202 +1,184 @@
 package videoPlayer
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.onClick
 import androidx.compose.material.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Maximize
-import androidx.compose.material.icons.filled.Minimize
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.WindowPlacement
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import logic.downloader.Download
 import logic.helper.Preferences
+import logic.helper.toFile
 import shared.AppData
 import tanoshi.lib.util.validateDir
 import tanoshi.source.api.model.component.Video
 import ui.component.Loading
-import ui.component.Text
-import ui.component.TextStyling
+import uk.co.caprica.vlcj.factory.MediaPlayerFactory
 import java.nio.file.Paths
-import kotlin.io.path.*
+import kotlin.io.path.readText
+import kotlin.io.path.writeText
+
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun VideoPlayer( sharedData: AppData ) = sharedData.run {
+fun VideoPlayer( sharedData : AppData ) = sharedData.run {
 
-    var mrl by remember { mutableStateOf( "" ) }
-    var m3u8Job : Job? = remember { null }
-    var updateProgress: Job?
-    var controlHidden by remember { mutableStateOf( true ) }
-    var isPlaying : Boolean by remember { mutableStateOf( true ) }
-    var progess : Float by remember { mutableStateOf( 0f ) }
-    var time : Long by remember { mutableStateOf( 0L ) }
-    var totalTime : String  by remember { mutableStateOf( "" ) }
-    var fetchingLinks : Boolean by remember { mutableStateOf( true ) }
     var links by remember { mutableStateOf( emptyList<Video>() ) }
-    var m3u8 : Boolean by mutableStateOf( mrl.endsWith( ".m3u8" ) && mrl != "${Preferences.getCacheLocation}/m3u8/index.m3u8" )
+    val mrl = remember { mutableStateOf( "" ) }
+    var fetchingLinks by remember { mutableStateOf( true ) }
+    var controlHidden by remember { mutableStateOf( true ) }
+
+    val isLibVlcPresent = remember {
+        try{
+            MediaPlayerFactory()
+            true
+        } catch ( _ : LinkageError ) {
+            false
+        }
+    }
 
     if ( links.isEmpty() ) {
         scope.launch {
             links = anime.selected.value!!.fetchEpisodeLink(anime.episode!!)
             if ( links.isEmpty()) navController.navigateBack()
-            else mrl = links.filter { it.quality != "auto" }.first().url
+            else mrl.value = links.first().url
             fetchingLinks = false
         }
     }
 
-    if ( m3u8 ) {
-            scope.launch {
-                m3u8Job?.let { it.cancel() }
-                val tempFolder = "${Preferences.getCacheLocation}/m3u8/"
-                val baseLink = mrl.substring(0, mrl.lastIndexOf("/") + 1)
+    if ( !isLibVlcPresent ) Box( Modifier.fillMaxSize() , contentAlignment = Alignment.Center ) { Text( "VLC Player Not Found\nIntall VLC Player to play videos" ) }
+    else {
+        if ( fetchingLinks ) Box(Modifier.fillMaxSize().background( Color.Black )) { Loading( Color.Transparent ) }
+        else Box( Modifier.fillMaxSize().onClick { controlHidden = !controlHidden } ) {
 
-                tempFolder.validateDir()
+            if (mrl.value.endsWith(".m3u8")) M3U8VideoPlayer(mrl, sharedData)
+            else BasicVideoPlayer(mrl, sharedData)
 
-                Paths.get("${tempFolder}link").run {
-                    if (toFile().isFile) {
-                        if ( !readText().contains( baseLink ) ) {
-                            Paths.get( tempFolder ).toFile().run{
-                                deleteRecursively()
-                                mkdirs()
-                            }
-                        }
-                    } else writeText(baseLink)
-                }
 
-                println("Downloading index.m3u8")
-
-                Download(mrl, "${tempFolder}index.m3u8").run {
-                    while (!status) {
-                        Thread.sleep(10)
-                    }
-                }
-
-                mrl = "${tempFolder}index.m3u8"
-
-                println( "wtf $mrl" )
-
-                val parts = Paths.get("${tempFolder}index.m3u8").readText().split("\n").filter { !it.startsWith("#") }
-
-                m3u8Job = scope.launch {
-
-                    for (i in parts) {
-                        println(i)
-                        if (Paths.get("$tempFolder$i").exists()) {
-                            println("File Already Exists")
-                            continue
-                        }
-                        Download("$baseLink$i", "$tempFolder$i")
-
-                    }
-                }
-                m3u8 = false
-            }
+        }
     }
 
-    if ( fetchingLinks || m3u8 ) Box( Modifier.background( Color.Black ) ){ Loading() }
-    else Box(
-        Modifier.fillMaxSize()
-            .onClick {
-                controlHidden = !controlHidden
-                println( controlHidden )
+//    DisposableEffect(key1 = mrl, effect = {
+//        this.onDispose {
+//        }
+//    })
+
+}
+
+@Composable
+fun M3U8VideoPlayer( mrl : MutableState<String> , sharedData: AppData ) {
+
+    var m3u8Job : Job? by remember { mutableStateOf( null ) }
+    val playList = remember { ArrayList<Pair<String,Long>>() }
+    var totalTime by remember { mutableStateOf( 0L ) }
+    remember { null }
+    val baseLink = remember { mrl.value.substring(0, mrl.value.lastIndexOf("/") + 1) }
+    val progress = remember { mutableStateOf( 0f ) }
+    var downloaderIndex by remember { mutableStateOf( 0 ) }
+    var playerIndex by remember { mutableStateOf( 0 ) }
+    var buffering by remember { mutableStateOf( false ) }
+
+    Box( Modifier.fillMaxSize() ){
+        Box( Modifier.fillMaxSize() ){ VideoSurface( "" , sharedData ) }
+        Box( Modifier.fillMaxSize() ) {
+            if ( buffering ) Box( Modifier.fillMaxSize() , contentAlignment = Alignment.Center ) {
+                Loading( Color.Transparent )
             }
-    ) {
-        VideoSurface( mrl , sharedData )
-        totalTime = (mediaPlayer.status().length()/1000).run { "${this/100}:${this%100}" }
-        if (!controlHidden) {
-            Column( Modifier.fillMaxSize()  ) {
-                Row( Modifier.weight( 1f ).fillMaxWidth() , horizontalArrangement = Arrangement.Center ) {
-                    Text( title , TextStyling(color = Color.Red) )
+        }
+
+        Box( Modifier.fillMaxSize().padding( 30.dp ) , contentAlignment = Alignment.BottomCenter ) {
+            Row {
+                Slider(progress.value, steps = playList.size, onValueChange = {
+                    (it * playList.size).toInt().let { requestedIndex ->
+                        progress.value = requestedIndex.toFloat() / playList.size
+                        downloaderIndex = requestedIndex
+                        playerIndex = requestedIndex
+                    }
+                })
+                Text( "${playerIndex+1}:${playList.size}" )
+            }
+        }
+    }
+
+    if ( m3u8Job == null ) {
+        m3u8Job = sharedData.scope.launch {
+
+            val tempFolder = "${Preferences.getCacheLocation}/m3u8/"
+
+            tempFolder.validateDir()
+
+            Paths.get("${tempFolder}link").run {
+                if (toFile().isFile) {
+                    if (!readText().contains(baseLink)) {
+                        Paths.get(tempFolder).toFile().run {
+                            deleteRecursively()
+                            mkdirs()
+                        }
+                    }
+                } else writeText(baseLink)
+            }
+
+            Download(mrl.value, "${tempFolder}index.m3u8").run {
+                while (!status) {
+                    Thread.sleep(10)
                 }
-                Row( Modifier.weight( 8f ).fillMaxSize() , horizontalArrangement = Arrangement.Center , verticalAlignment = Alignment.CenterVertically ){
-                    Image(
-                        if ( isPlaying ) Icons.Filled.Pause
-                        else Icons.Filled.PlayArrow ,"" ,
-                        modifier = Modifier.size( 100.dp ).onClick {
-                            if ( mediaPlayer.status().isPlaying ) mediaPlayer.controls().pause()
-                            else mediaPlayer.controls().play()
-                        },
-                        colorFilter = ColorFilter.tint( color = Color.Red )
-                    )
+            }
+
+            var duration = 0L
+            Paths.get("${tempFolder}index.m3u8").readText().split("\n").forEach {
+                if (it.startsWith("#EXTINF")) totalTime += (it.filter { char -> char.isDigit() || char == '.' }
+                    .toFloat() * 1000).toLong().also { duration = it }
+                if (!it.startsWith("#") && it.isNotBlank()) {
+                    playList.add( Pair( it , duration ) )
                 }
-                Row( Modifier.weight( 1f ).fillMaxWidth() , horizontalArrangement = Arrangement.Center ) {
-                    Text( time.run { "\n${this/100}:${this%100}" } , TextStyling( modifier = Modifier.weight(1f), color = Color.Red ) )
-                    Slider(
-                        progess ,
-                        onValueChange = {
-                            mediaPlayer.controls().setPosition( (it*100).toInt().toFloat()/100 )
-                        } ,
-                        modifier = Modifier.weight( 8f ) ,
-                        colors = SliderDefaults.colors(
-                            activeTrackColor = Color.Red ,
-                            inactiveTrackColor = Color.DarkGray ,
-                            disabledThumbColor = Color.Transparent ,
-                            thumbColor = Color.Transparent
+            }
+
+            sharedData.scope.launch {
+                while ( downloaderIndex in 0 until  playList.size ) {
+                    playList[downloaderIndex].first.let { name ->
+                        if (!"$tempFolder${name}".toFile().isFile) Download(
+                            "$baseLink$name",
+                            "$tempFolder$name"
                         )
-                    )
-                    Text( "\n$totalTime" , TextStyling( modifier = Modifier.weight(1f), color = Color.Red ) )
-                }
-                Row( Modifier.weight( 1f ).fillMaxWidth() , horizontalArrangement = Arrangement.SpaceEvenly ) {
-                    Image(
-                        if ( appState.placement != WindowPlacement.Fullscreen ) Icons.Filled.Maximize
-                        else Icons.Filled.Minimize
-                        , "" ,
-                        colorFilter = ColorFilter.tint( Color.Red ) ,
-                        modifier = Modifier.onClick {
-                            if ( appState.placement != WindowPlacement.Fullscreen ) appState.placement = WindowPlacement.Fullscreen
-                            else appState.placement = WindowPlacement.Floating
-                            navigationBarHidden.value = !navigationBarHidden.value
-                        }
-                    )
-                }
-                Box( Modifier.fillMaxSize().padding( 20.dp ).background( Color.Transparent ) , contentAlignment = Alignment.BottomStart ) {
-                    var isExpanded by remember { mutableStateOf( false ) }
-                    Text( "change link" , modifier = Modifier.background( Color.Black ).onClick { isExpanded = true } , color = Color.White )
-                    DropdownMenu( expanded = isExpanded , onDismissRequest = { isExpanded = false } ) {
-                        links.forEach {
-                            DropdownMenuItem( enabled = true , onClick = {
-                                mrl = it.url
-                                isExpanded = false
-                            }, content = {
-                                androidx.compose.material.Text( it.quality )
-                            } )
-                        }
                     }
+                    downloaderIndex++
                 }
             }
+
+           sharedData.scope.launch {
+               while ( playerIndex in 0 until  playList.size ) {
+                   progress.value = (playerIndex.toFloat()/playList.size.toFloat())
+                   playList[playerIndex].let { ( name , duration ) ->
+                       playerIndex++
+                       if ( ! "$tempFolder$name".toFile().isFile ) Download( "$baseLink$name" , "$tempFolder$name" ).also {
+                           buffering = true
+                           while (!it.status) continue
+                       }
+                       buffering = false
+                       sharedData.embeddedMediaListPlayerComponent.mediaPlayer().media().play( "$tempFolder$name" )
+                       val playerIndexSnapshot = playerIndex
+                       for ( i in 0 until duration step 500 ) {
+                           if ( playerIndexSnapshot != playerIndex ) break
+                           delay( 500 )
+                       }
+                   }
+               }
+
+           }
+
         }
     }
 
-    if ( !m3u8 && !fetchingLinks ) {
-        updateProgress = scope.launch {
-            while (true) {
-                delay(100)
-                isPlaying = mediaPlayer.status().isPlaying
-                progess = mediaPlayer.status().position()
-                time = mediaPlayer.status().time() / 1000
-            }
-        }
+}
 
-        DisposableEffect(key1 = mrl, effect = {
-            this.onDispose {
-                m3u8Job?.let { it.cancel() }
-                updateProgress?.let { it.cancel() }
-                navigationBarHidden.value = false
-                appState.placement = WindowPlacement.Floating
-            }
-        })
-    }
-
+@Composable
+private fun BasicVideoPlayer( mrl : MutableState<String> , sharedData: AppData ) {
+    VideoSurface( mrl.value , sharedData )
 }

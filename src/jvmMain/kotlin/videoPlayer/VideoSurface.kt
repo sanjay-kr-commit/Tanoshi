@@ -5,13 +5,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asComposeImageBitmap
 import org.jetbrains.skia.Bitmap
 import org.jetbrains.skia.ColorAlphaType
 import org.jetbrains.skia.ImageInfo
 import shared.AppData
-import uk.co.caprica.vlcj.factory.MediaPlayerFactory
 import uk.co.caprica.vlcj.player.base.MediaPlayer
+import uk.co.caprica.vlcj.player.component.EmbeddedMediaListPlayerComponent
 import uk.co.caprica.vlcj.player.embedded.videosurface.CallbackVideoSurface
 import uk.co.caprica.vlcj.player.embedded.videosurface.VideoSurfaceAdapters
 import uk.co.caprica.vlcj.player.embedded.videosurface.callback.BufferFormat
@@ -42,8 +44,7 @@ fun VideoSurface(
     val mediaPlayer = remember {
         var byteArray :ByteArray? = null
         var info: ImageInfo? = null
-        val factory = MediaPlayerFactory()
-        val embeddedMediaPlayer = factory.mediaPlayers().newEmbeddedMediaPlayer()
+        val embeddedMediaPlayer = EmbeddedMediaListPlayerComponent()
         val callbackVideoSurface = CallbackVideoSurface(
             object : BufferFormatCallback {
                 override fun getBufferFormat(sourceWidth: Int, sourceHeight: Int): BufferFormat {
@@ -75,14 +76,15 @@ fun VideoSurface(
             true,
             VideoSurfaceAdapters.getVideoSurfaceAdapter(),
         )
-        embeddedMediaPlayer.videoSurface().set(callbackVideoSurface)
+        embeddedMediaPlayer.mediaPlayer().videoSurface().set(callbackVideoSurface)
         embeddedMediaPlayer
     }
 
-    sharedData.mediaPlayer = mediaPlayer
+    sharedData.embeddedMediaListPlayerComponent = mediaPlayer
 
     LaunchedEffect(key1 = mrl) {
-        mediaPlayer.media().play( mrl )
+        mediaPlayer.mediaListPlayer().list().media().add( mrl )
+        mediaPlayer.mediaListPlayer().controls().play()
     }
 
     DisposableEffect(key1 = mrl, effect = {
