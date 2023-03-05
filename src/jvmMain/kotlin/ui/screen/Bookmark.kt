@@ -51,9 +51,7 @@ fun Bookmark( sharedData : AppData ) {
                     println( a )
                 }
             }
-        }catch (e:Exception){
-            println( e )
-        }
+        }catch (_:Exception){}
             loading = false
     }
 
@@ -67,9 +65,7 @@ fun Bookmark( sharedData : AppData ) {
                     println( a )
                 }
             }
-        }catch (e:Exception){
-            println( e )
-        }
+        }catch (_:Exception){}
         loading = false
     }
 
@@ -83,9 +79,7 @@ fun Bookmark( sharedData : AppData ) {
                     println( a )
                 }
             }
-        }catch (e:Exception){
-            println( e )
-        }
+        }catch (_:Exception){}
         loading = false
     }
 
