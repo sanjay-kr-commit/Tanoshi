@@ -35,7 +35,8 @@ fun VideoSurface(
         androidx.compose.foundation.Image(
             bitmap = it,
             contentDescription = "Video",
-            modifier = modifier
+            modifier = modifier ,
+            contentScale = sharedData.contentScale.value
         )
     }?:run {
         Box(modifier = modifier.background(Color.Black))

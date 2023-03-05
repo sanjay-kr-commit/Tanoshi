@@ -2,6 +2,7 @@ package shared
 
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.window.WindowState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -36,6 +37,7 @@ class AppData {
     val scope = CoroutineScope( Dispatchers.Default )
 
     lateinit var embeddedMediaListPlayerComponent : EmbeddedMediaListPlayerComponent
+    var contentScale = mutableStateOf( ContentScale.Fit )
     var title = ""
 
     var appState : WindowState = WindowState()
