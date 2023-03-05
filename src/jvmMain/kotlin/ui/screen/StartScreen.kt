@@ -19,7 +19,7 @@ fun StartScreen( navModifier: Modifier = Modifier , navContent : @Composable () 
             Modifier
                 .fillMaxSize()
                 .background( Colors.StartScreenBackground.value )
-                .padding( Spacing.Widget.value )
+                .padding( if ( sharedData.navigationBarHidden.value ) 0.dp else 5.dp )
         ) {
 
           if ( !sharedData.navigationBarHidden.value ){
@@ -39,7 +39,7 @@ fun StartScreen( navModifier: Modifier = Modifier , navContent : @Composable () 
 
             Column(
                 pageModifier
-                    .clip( RoundedCornerShape( Spacing.Widget.value ) )
+                    .clip( RoundedCornerShape( if ( sharedData.navigationBarHidden.value ) 0.dp else 5.dp ) )
                     .fillMaxSize()
                     .background( Colors.WidgetColor.value ) )
             {
