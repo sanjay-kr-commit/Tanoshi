@@ -45,6 +45,8 @@ fun NovelDetail( sharedData : AppData ) = sharedData.novel.run {
     var fetchDetails by remember { mutableStateOf(
         selectedEntry!!.description == null
     ) }
+    var isBookmarked by remember { mutableStateOf( Paths.get( "${Preferences.getDataLocation}/Novel/${selectedEntry!!.title}.json" ).exists() ) }
+
     if ( fetchDetails ) {
         sharedData.scope.launch {
             selected.value!!.fetchDetails( selectedEntry!! )
@@ -118,16 +120,20 @@ fun NovelDetail( sharedData : AppData ) = sharedData.novel.run {
                             TextStyling( color = Color.White )
                         )
                         Image(
-                            if ( Paths.get( "${Preferences.getDataLocation}/${selectedEntry!!.extensionName}/${selectedEntry!!.title}.json" ).exists() ) Icons.Filled.BookmarkAdded
+                            if ( isBookmarked ) Icons.Filled.BookmarkAdded
                             else Icons.Filled.BookmarkAdd
                             , "" ,
                             modifier = Modifier.padding( 5.dp ).background( Color.Black ).clip( RoundedCornerShape( 5.dp ) ).padding( 5.dp ).onClick {
-                                if ( Paths.get( "${Preferences.getDataLocation}/Novel/${selectedEntry!!.title}.json" ).exists() ){
+                                if ( isBookmarked ){
                                     Paths.get( "${Preferences.getDataLocation}/Novel/${selectedEntry!!.title}.json" ).deleteIfExists()
+                                    isBookmarked = false
                                 } else {
                                     Paths.get( "${Preferences.getDataLocation}/Novel" )
                                         .also { it.toFile().also { dir -> dir.mkdirs() }.createNewFile() }
-                                    Paths.get( "${Preferences.getDataLocation}/Novel/${selectedEntry!!.title}.json" ).writeText(Gson().toJson(selectedEntry) )
+                                        .also { selectedEntry!!.extensionName = selected.value!!::class.java.name }
+                                    Paths.get( "${Preferences.getDataLocation}/Novel/${selectedEntry!!.title}.json" )
+                                        .writeText(Gson().toJson(selectedEntry) )
+                                    isBookmarked = Paths.get( "${Preferences.getDataLocation}/Novel/${selectedEntry!!.title}.json" ).exists()
                                 }
                             } ,
                             colorFilter = ColorFilter.tint( Color.White )
