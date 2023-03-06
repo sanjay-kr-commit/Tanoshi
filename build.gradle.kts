@@ -28,14 +28,12 @@ kotlin {
             dependencies {
                 implementation(compose.desktop.currentOs)
                 implementation(compose.materialIconsExtended)
-//                implementation( "com.github.sanjay-kr-commit:TanoshiExtensionModel:main-SNAPSHOT" )
-                implementation("com.github.sanjay-kr-commit:tanoshi-source-api:main-SNAPSHOT")
+                implementation("com.github.sanjay-kr-commit:tanoshi-source-api:0.1")
                 implementation("com.squareup.okhttp:okhttp:2.7.5")
                 implementation("org.jsoup:jsoup:1.15.3")
                 runtimeOnly("org.jetbrains.kotlin:kotlin-reflect:1.7.22")
                 implementation("com.google.code.gson:gson:2.9.1")
                 implementation("uk.co.caprica:vlcj:4.8.2")
-                //implementation("uk.co.caprica:vlcj:5.0.0")
                 implementation(kotlin("reflect"))
             }
         }
