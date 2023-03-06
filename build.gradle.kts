@@ -48,6 +48,8 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "Tanoshi"
             packageVersion = "1.0.0"
+            // this module is required for direct rendering vlcj
+            modules.add( "jdk.unsupported" )
             linux {
                 iconFile.set(project.file("app_icon/linux.png"))
             }
