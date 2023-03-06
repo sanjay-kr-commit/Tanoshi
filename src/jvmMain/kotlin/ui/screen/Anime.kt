@@ -24,8 +24,6 @@ import tanoshi.lib.exception.PageIndexOutOfTheBoundException
 import tanoshi.source.api.annotation.IMPLEMENTED
 import tanoshi.source.api.annotation.TAB
 import tanoshi.source.api.model.component.Anime
-import tanoshi.source.api.model.component.Manga
-import tanoshi.source.api.model.component.Novel
 import ui.component.*
 
 @Composable
@@ -64,7 +62,7 @@ fun Anime( sharedData : AppData ) = sharedData.anime.run {
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AnimeExtensionList( sharedData : AppData ) = sharedData.anime.run {
-    if ( sources.isEmpty() ) androidx.compose.material.Text("No Novel Extension Found")
+    if ( sources.isEmpty() ) Text("No Novel Extension Found")
     else LazyRow( Modifier.padding( 5.dp ) ) {
         sources.forEach { (_, extension) ->
             item {
